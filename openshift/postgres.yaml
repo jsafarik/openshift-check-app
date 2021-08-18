@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: List
+items:
+
+  # PostgreSQL
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: check-app-db
+    spec:
+      ports:
+        - name: postgresql
+          nodePort: 0
+          port: 5432
+          protocol: TCP
+          targetPort: 5432
+      selector:
+        name: check-app-db
+      sessionAffinity: None
+      type: ClusterIP
+
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: check-app-db
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+
+  - apiVersion: apps.openshift.io/v1
+    kind: DeploymentConfig
+    metadata:
+      name: check-app-db
+    spec:
+      replicas: 1
+      selector:
+        name: check-app-db
+      strategy:
+        type: Recreate
+      template:
+        metadata:
+          labels:
+            name: check-app-db
+        spec:
+          containers:
+            - capabilities: {}
+              env:
+                - name: POSTGRESQL_USER
+                  value: admin
+                - name: POSTGRESQL_PASSWORD
+                  value: admin
+                - name: POSTGRESQL_DATABASE
+                  value: tasks
+              image: ' '
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                exec:
+                  command:
+                    - /usr/libexec/check-container
+                    - --live
+                initialDelaySeconds: 120
+                timeoutSeconds: 10
+              name: postgresql
+              ports:
+                - containerPort: 5432
+                  protocol: TCP
+              readinessProbe:
+                exec:
+                  command:
+                    - /usr/libexec/check-container
+                initialDelaySeconds: 5
+                timeoutSeconds: 1
+              resources:
+                limits:
+                  memory: 512Mi
+              securityContext:
+                capabilities: {}
+                privileged: false
+              terminationMessagePath: /dev/termination-log
+              volumeMounts:
+                - mountPath: /var/lib/pgsql/data
+                  name: check-app-db-data
+          dnsPolicy: ClusterFirst
+          restartPolicy: Always
+          volumes:
+            - name: check-app-db-data
+              persistentVolumeClaim:
+                claimName: check-app-db
+      triggers:
+        - type: ImageChange
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - postgresql
+            from:
+              kind: ImageStreamTag
+              name: postgresql:latest
+              namespace: openshift
+            lastTriggeredImage: ""
+        - type: ConfigChange

@@ -1,0 +1,147 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  template: ${APP_NAME}
+metadata:
+  name: ${APP_NAME}
+objects:
+
+  # IS for quarkus app s2i build
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: openjdk-11
+    spec:
+      lookupPolicy:
+        local: false
+      tags:
+        - name: latest
+          annotations: null
+          from:
+            kind: DockerImage
+            name: registry.access.redhat.com/ubi8/openjdk-11
+          referencePolicy:
+            type: Source
+
+  # Check App
+
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      labels:
+        app: ${APP_NAME}
+      name: ${APP_NAME}
+    spec:
+      lookupPolicy:
+        local: false
+
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      labels:
+        app: ${APP_NAME}
+      name: ${APP_NAME}
+    spec:
+      runPolicy: Serial
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ${APP_NAME}:latest
+      source:
+        git:
+          uri: https://github.com/jsafarik/openshift-check-app.git
+        type: Git
+      strategy:
+        sourceStrategy:
+          from:
+            kind: ImageStreamTag
+            name: 'openjdk-11:latest'
+          env:
+            - name: GIT_SSL_NO_VERIFY
+              value: 'true'
+        type: Source
+      triggers:
+        - type: ConfigChange
+
+  - apiVersion: apps.openshift.io/v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: ${APP_NAME}
+      name: ${APP_NAME}
+    spec:
+      replicas: 1
+      selector:
+        deploymentconfig: ${APP_NAME}
+      strategy:
+        type: Recreate
+      template:
+        metadata:
+          labels:
+            deploymentconfig: ${APP_NAME}
+            app: ${APP_NAME}
+        spec:
+          containers:
+            - image: ${APP_NAME}:latest
+              name: ${APP_NAME}
+              ports:
+                - containerPort: 8080
+                  protocol: TCP
+              env:
+                - name: QUARKUS_DATASOURCE_DB_KIND
+                  value: postgresql
+                - name: QUARKUS_DATASOURCE_USERNAME
+                  value: admin
+                - name: QUARKUS_DATASOURCE_PASSWORD
+                  value: admin
+                - name: QUARKUS_DATASOURCE_JDBC_URL
+                  value: 'jdbc:postgresql://${DB_SERVICE_IP}:5432/tasks'
+      test: false
+      triggers:
+        - type: ConfigChange
+        - type: ImageChange
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - ${APP_NAME}
+            from:
+              kind: ImageStreamTag
+              name: ${APP_NAME}:latest
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: ${APP_NAME}
+      name: ${APP_NAME}
+    spec:
+      ports:
+        - name: 8080-tcp
+          port: 8080
+          protocol: TCP
+          targetPort: 8080
+      selector:
+        deploymentconfig: ${APP_NAME}
+
+  - kind: Route
+    apiVersion: route.openshift.io/v1
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      to:
+        kind: Service
+        name: ${APP_NAME}
+      port:
+        targetPort: 8080-tcp
+
+parameters:
+  - description: IP of database service
+    displayName: IP of database service
+    name: DB_SERVICE_IP
+    required: true
+  - description: Application name
+    displayName: Application name
+    name: APP_NAME
+    required: true

@@ -10,6 +10,6 @@ public class AppLifecycleBean {
     private static final Logger LOGGER = Logger.getLogger("ListenerBean");
 
     void onStart(@Observes StartupEvent ev) {
-        LOGGER.info("Check app has started!");
+        LOGGER.info("Sample app has started!");
     }
 }

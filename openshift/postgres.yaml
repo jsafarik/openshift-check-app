@@ -7,7 +7,7 @@ items:
   - apiVersion: v1
     kind: Service
     metadata:
-      name: check-app-db
+      name: sample-app-db
     spec:
       ports:
         - name: postgresql
@@ -16,14 +16,14 @@ items:
           protocol: TCP
           targetPort: 5432
       selector:
-        name: check-app-db
+        name: sample-app-db
       sessionAffinity: None
       type: ClusterIP
 
   - apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
-      name: check-app-db
+      name: sample-app-db
     spec:
       accessModes:
         - ReadWriteOnce
@@ -34,17 +34,17 @@ items:
   - apiVersion: apps.openshift.io/v1
     kind: DeploymentConfig
     metadata:
-      name: check-app-db
+      name: sample-app-db
     spec:
       replicas: 1
       selector:
-        name: check-app-db
+        name: sample-app-db
       strategy:
         type: Recreate
       template:
         metadata:
           labels:
-            name: check-app-db
+            name: sample-app-db
         spec:
           containers:
             - capabilities: {}
@@ -83,13 +83,13 @@ items:
               terminationMessagePath: /dev/termination-log
               volumeMounts:
                 - mountPath: /var/lib/pgsql/data
-                  name: check-app-db-data
+                  name: sample-app-db-data
           dnsPolicy: ClusterFirst
           restartPolicy: Always
           volumes:
-            - name: check-app-db-data
+            - name: sample-app-db-data
               persistentVolumeClaim:
-                claimName: check-app-db
+                claimName: sample-app-db
       triggers:
         - type: ImageChange
           imageChangeParams:

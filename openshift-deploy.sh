@@ -15,16 +15,16 @@ waitForRunningPod() {
   done
 }
 
-waitForCheckAppStart() {
-  while [[ ! $(oc logs "$(oc get pods --no-headers=true --selector app=$1 -o custom-columns=NAME:.metadata.name)") == *"Check app has started!"* ]]; do
-    echo "Waiting for Check app to start"
+waitForSampleAppStart() {
+  while [[ ! $(oc logs "$(oc get pods --no-headers=true --selector app=$1 -o custom-columns=NAME:.metadata.name)") == *"Sample app has started!"* ]]; do
+    echo "Waiting for Sample app to start"
   done
 }
 
-SERVER=check-app-server
-NAMESPACE=${1:-"check-app"}
+SERVER=sample-app-server
+NAMESPACE=${1:-"sample-app"}
 POSTGRES_LIST="openshift/postgres.yaml"
-CHECK_APP_TEMPLATE="openshift/checkApp.yaml"
+SAMPLE_APP_TEMPLATE="openshift/sampleApp.yaml"
 
 oc new-project $NAMESPACE
 
@@ -35,15 +35,15 @@ oc project $NAMESPACE
 oc create -f ${POSTGRES_LIST}
 
 # Wait until database pod is Running and has exactly 1 out of 1 pod ready
-waitForRunningPod check-app-db
+waitForRunningPod sample-app-db
 
-DB_SVC_IP=$(oc get svc check-app-db -o jsonpath='{.spec.clusterIP}')
+DB_SVC_IP=$(oc get svc sample-app-db -o jsonpath='{.spec.clusterIP}')
 
-oc process -f ${CHECK_APP_TEMPLATE} -p DB_SERVICE_IP=${DB_SVC_IP} -p APP_NAME=${SERVER} | oc create -f -
+oc process -f ${SAMPLE_APP_TEMPLATE} -p DB_SERVICE_IP=${DB_SVC_IP} -p APP_NAME=${SERVER} | oc create -f -
 
 waitForRunningPod ${SERVER}
 
-waitForCheckAppStart ${SERVER}
+waitForSampleAppStart ${SERVER}
 
 ROUTE=$(oc get route --no-headers=true --selector app=${SERVER} -o custom-columns=NAME:.spec.host)
 

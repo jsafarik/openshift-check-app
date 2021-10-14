@@ -1,9 +1,9 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 labels:
-  template: ${APP_NAME}
+  template: sample-app
 metadata:
-  name: ${APP_NAME}
+  name: sample-app
 objects:
 
   # IS for quarkus app s2i build

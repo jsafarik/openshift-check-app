@@ -50,6 +50,7 @@ objects:
       source:
         git:
           uri: https://github.com/jsafarik/openshift-sample-app.git
+          ref: ${SOURCE_CODE_BRANCH}
         type: Git
       strategy:
         sourceStrategy:
@@ -145,3 +146,7 @@ parameters:
     displayName: Application name
     name: APP_NAME
     required: true
+  - description: Source code branch
+    displayName: Source code branch
+    name: SOURCE_CODE_BRANCH
+    value: master

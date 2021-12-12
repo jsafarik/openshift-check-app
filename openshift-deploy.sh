@@ -16,13 +16,14 @@ waitForRunningPod() {
 }
 
 waitForSampleAppStart() {
-  while [[ ! $(oc logs "$(oc get pods --no-headers=true --selector app=$1 -o custom-columns=NAME:.metadata.name)") == *"Sample app has started!"* ]]; do
+  while [[ ! $(oc logs "$(oc get pods --no-headers=true --selector app=$1 -o custom-columns=NAME:.metadata.name)") == *"Created table"* ]]; do
     echo "Waiting for Sample app to start"
   done
 }
 
 SERVER=sample-app-server
 NAMESPACE=${1:-"sample-app"}
+BRANCH=${2:-"master"}
 POSTGRES_LIST="openshift/postgres.yaml"
 SAMPLE_APP_TEMPLATE="openshift/sampleApp.yaml"
 
@@ -39,7 +40,7 @@ waitForRunningPod sample-app-db
 
 DB_SVC_IP=$(oc get svc sample-app-db -o jsonpath='{.spec.clusterIP}')
 
-oc process -f ${SAMPLE_APP_TEMPLATE} -p DB_SERVICE_IP=${DB_SVC_IP} -p APP_NAME=${SERVER} | oc create -f -
+oc process -f ${SAMPLE_APP_TEMPLATE} -p DB_SERVICE_IP=${DB_SVC_IP} -p APP_NAME=${SERVER} -p SOURCE_CODE_BRANCH=${BRANCH} | oc create -f -
 
 waitForRunningPod ${SERVER}
 
@@ -47,10 +48,7 @@ waitForSampleAppStart ${SERVER}
 
 ROUTE=$(oc get route --no-headers=true --selector app=${SERVER} -o custom-columns=NAME:.spec.host)
 
-curl -w "\n" ${ROUTE}/init
-curl -w "\n" -X POST -w "\n" -d 'my first task' -H "Content-Type: text/plain" ${ROUTE}/add
-curl -w "\n" ${ROUTE}/get/1
-curl -w "\n" ${ROUTE}/drop
+./test.sh ${ROUTE}
 
 # TODO check after deployment (of list and template) if all resources were created/succeeded
 # TODO measure how long it took to deploy the whole app/parts of it (get info from deployment pods?)
